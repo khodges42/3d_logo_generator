@@ -45,6 +45,97 @@ function shade(hex, i, depth) {
   return `rgb(${Math.round(mix(0, r, k))},${Math.round(mix(0, g, k))},${Math.round(mix(0, b, k))})`;
 }
 
+
+function rand01(seed) {
+  const x = Math.sin(seed * 12.9898) * 43758.5453123;
+  return x - Math.floor(x);
+}
+
+function applyGlitch(amount, exportTime) {
+  if (amount <= 0) return;
+  const w = canvas.width;
+  const h = canvas.height;
+  const strength = amount / 100;
+  const source = ctx.getImageData(0, 0, w, h);
+
+  // Hard horizontal slice displacement. This is the part that makes it
+  // actually look broken instead of just adding tiny jitter inside the tail.
+  const slices = Math.floor(4 + strength * 38);
+  for (let s = 0; s < slices; s++) {
+    const y = Math.floor(rand01(exportTime + s * 19.17) * h);
+    const sliceH = Math.max(2, Math.floor(rand01(exportTime + s * 7.91) * (8 + strength * 42)));
+    const dx = Math.floor((rand01(exportTime + s * 3.33) - 0.5) * strength * 120);
+    ctx.putImageData(source, dx, 0, 0, y, w, Math.min(sliceH, h - y));
+  }
+
+  // RGB channel tear. Draw the whole canvas twice with blend-ish offsets.
+  const temp = document.createElement('canvas');
+  temp.width = w;
+  temp.height = h;
+  const tctx = temp.getContext('2d');
+  tctx.putImageData(source, 0, 0);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = Math.min(0.55, 0.12 + strength * 0.45);
+  ctx.filter = 'sepia(1) saturate(8) hue-rotate(-45deg)';
+  ctx.drawImage(temp, Math.floor(strength * 12), 0);
+  ctx.filter = 'sepia(1) saturate(8) hue-rotate(145deg)';
+  ctx.drawImage(temp, -Math.floor(strength * 10), 0);
+  ctx.restore();
+
+  // Occasional black/white data bars.
+  ctx.save();
+  for (let i = 0; i < Math.floor(strength * 18); i++) {
+    const y = Math.floor(rand01(exportTime * 2 + i * 5.13) * h);
+    const x = Math.floor(rand01(exportTime * 3 + i * 9.44) * w);
+    const bw = Math.floor(20 + rand01(i + exportTime) * strength * 260);
+    const bh = Math.floor(1 + rand01(i * 2 + exportTime) * 7);
+    ctx.globalAlpha = 0.15 + strength * 0.45;
+    ctx.fillStyle = rand01(i + exportTime * 8) > 0.5 ? '#fff' : '#000';
+    ctx.fillRect(x, y, bw, bh);
+  }
+  ctx.restore();
+}
+
+function applyNoise(amount, exportTime) {
+  if (amount <= 0) return;
+  const w = canvas.width;
+  const h = canvas.height;
+  const strength = amount / 100;
+
+  // Pixel noise over every-ish pixel, not every 9th pixel. Previous version
+  // was too subtle on a high-res canvas.
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  const step = strength > 0.55 ? 4 : 8;
+  const amp = 28 + strength * 120;
+  for (let i = 0; i < d.length; i += step) {
+    const v = (Math.random() - 0.5) * amp;
+    d[i] = Math.max(0, Math.min(255, d[i] + v));
+    d[i + 1] = Math.max(0, Math.min(255, d[i + 1] + v));
+    d[i + 2] = Math.max(0, Math.min(255, d[i + 2] + v));
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // CRT/static speckles and scanline dirt.
+  ctx.save();
+  ctx.globalAlpha = 0.08 + strength * 0.25;
+  ctx.fillStyle = '#ffffff';
+  const specks = Math.floor(strength * 1800);
+  for (let i = 0; i < specks; i++) {
+    const x = Math.floor(rand01(exportTime + i * 1.71) * w);
+    const y = Math.floor(rand01(exportTime + i * 2.43) * h);
+    ctx.fillRect(x, y, 1 + Math.floor(strength * 2), 1);
+  }
+
+  ctx.globalAlpha = 0.05 + strength * 0.18;
+  ctx.fillStyle = '#000000';
+  const gap = Math.max(2, Math.floor(7 - strength * 4));
+  for (let y = 0; y < h; y += gap) ctx.fillRect(0, y, w, 1);
+  ctx.restore();
+}
+
 function drawSpacedText(context, text, x, y, spacing, mode = 'fill') {
   const lines = text.split('\n');
   const lineHeight = Number(controls.size.value) * 0.9;
@@ -84,10 +175,11 @@ function render(exportTime = time) {
   const faceScaleX = spinCos;
   const shearX = spinSin * 0.18 * wobble;
 
-  // Swing the extrusion vector around with the rotating face instead of wiggling it.
-  const angle = baseAngle + spinSin * Math.PI;
-  const dx = Math.cos(angle) * (1.2 + Math.abs(spinSin) * 1.1);
-  const dy = Math.sin(angle) * 1.25;
+  // Keep the extrusion vector fixed in the text's LOCAL space.
+  // Because the canvas transform below is applied to both the face and the extrusion,
+  // the back part rotates with the letters instead of swinging around independently.
+  const dx = Math.cos(baseAngle) * 1.45;
+  const dy = Math.sin(baseAngle) * 1.45;
   const glitch = Number(controls.glitch.value);
   const spacing = Number(controls.letterSpacing.value);
 
@@ -118,7 +210,7 @@ function render(exportTime = time) {
   ctx.filter = `blur(${Number(controls.blur.value)}px)`;
   for (let i = depth; i > 0; i--) {
     const n = Math.sin(i * 12.9898 + exportTime) * 43758.5453;
-    const jitter = glitch ? ((n - Math.floor(n)) - 0.5) * glitch * (i / Math.max(1, depth)) * 0.13 : 0;
+    const jitter = glitch ? ((n - Math.floor(n)) - 0.5) * glitch * (i / Math.max(1, depth)) * 0.45 : 0;
     ctx.fillStyle = shade(controls.extrude.value, i, depth);
     drawSpacedText(ctx, text, dx * i + jitter, dy * i, spacing, 'fill');
   }
@@ -132,15 +224,8 @@ function render(exportTime = time) {
   drawSpacedText(ctx, text, 0, 0, spacing, 'fill');
   ctx.restore();
 
-  const noise = Number(controls.noise.value);
-  if (noise > 0) {
-    const img = ctx.getImageData(0, 0, w, h);
-    for (let i = 0; i < img.data.length; i += 4 * 9) {
-      const v = (Math.random() - 0.5) * noise;
-      img.data[i] += v; img.data[i + 1] += v; img.data[i + 2] += v;
-    }
-    ctx.putImageData(img, 0, 0);
-  }
+  applyGlitch(glitch, exportTime);
+  applyNoise(Number(controls.noise.value), exportTime);
   if (controls.centerGuide.checked) {
     ctx.strokeStyle = '#ff000066';
     ctx.lineWidth = 1;
