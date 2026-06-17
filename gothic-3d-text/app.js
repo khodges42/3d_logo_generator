@@ -71,17 +71,22 @@ function render(exportTime = time) {
   const baseAngle = Number(controls.angle.value) * Math.PI / 180;
   const wobble = Number(controls.wobble.value) / 100;
 
-  // Real-ish logo rotation: rotate the whole text object around a fake Y axis.
-  // The old version only changed the extrusion vector, so the face stayed locked
-  // in place and the tail just wiggled. This compresses/skews the face too.
-  const phase = exportTime * 0.045;
-  const yRot = Math.sin(phase) * wobble * (Math.PI * 0.72); // max about 130deg at 100%
-  const faceScaleX = Math.max(0.18, Math.abs(Math.cos(yRot)));
-  const shearX = Math.sin(yRot) * 0.18;
+  // Full fake-Y-axis spin.
+  // Important: this is NOT Math.sin(phase). Math.sin() only eases back and forth.
+  // Letting yRot increase forever gives a continuous 360° rotation.
+  const phase = exportTime * 0.055;
+  const yRot = phase;
+  const spinCos = Math.cos(yRot);
+  const spinSin = Math.sin(yRot);
 
-  // As the face rotates, the extrusion swings around with it.
-  const angle = baseAngle + Math.sin(yRot) * 0.9;
-  const dx = Math.cos(angle) * (1.2 + Math.abs(Math.sin(yRot)) * 1.1);
+  // Negative scaleX is intentional: when the text turns past 90°, the face mirrors,
+  // which sells the illusion that you're seeing the back side of the same object.
+  const faceScaleX = spinCos;
+  const shearX = spinSin * 0.18 * wobble;
+
+  // Swing the extrusion vector around with the rotating face instead of wiggling it.
+  const angle = baseAngle + spinSin * Math.PI;
+  const dx = Math.cos(angle) * (1.2 + Math.abs(spinSin) * 1.1);
   const dy = Math.sin(angle) * 1.25;
   const glitch = Number(controls.glitch.value);
   const spacing = Number(controls.letterSpacing.value);
