@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3D Type Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=Creepster&family=Ewert&family=Faster+One&family=Frijole&family=Jacquard+12&family=MedievalSharp&family=Metal+Mania&family=Monoton&family=New+Rocker&family=Pirata+One&family=Rye&family=Rubik+Glitch&family=Rubik+Iso&family=Rubik+Moonrocks&family=Sancreek&family=UnifrakturCook:wght@700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <p class="eyebrow">browser toy / merch machine / bad idea factory</p>
+      <h1>3D Type Generator</h1>
+      <p>Make rotating extruded gothic/Y2K text in your browser. Export PNG, WebM, or GIF.</p>
+    </header>
+
+    <section class="app">
+      <aside class="panel" aria-label="Controls">
+        <label>
+          Text
+          <textarea id="textInput" rows="2">segfault</textarea>
+        </label>
+
+        <div class="grid two">
+          <label>
+            Font
+            <select id="fontSelect"></select>
+          </label>
+          <label>
+            Preset
+            <select id="presetSelect">
+              <option value="gothic">Gothic chrome</option>
+              <option value="acid">Acid merch</option>
+              <option value="inferno">Inferno</option>
+              <option value="terminal">Terminal</option>
+              <option value="bubblegum">Bubblegum evil</option>
+              <option value="void">Void</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="grid two">
+          <label>Face <input id="faceColor" type="color" value="#ffffff"></label>
+          <label>Extrude <input id="extrudeColor" type="color" value="#777777"></label>
+          <label>Stroke <input id="strokeColor" type="color" value="#000000"></label>
+          <label>Background <input id="bgColor" type="color" value="#050505"></label>
+        </div>
+
+        <div class="grid two">
+          <label>Font size <input id="fontSize" type="range" min="32" max="220" value="120"></label>
+          <label>Depth <input id="depth" type="range" min="0" max="180" value="80"></label>
+          <label>Angle <input id="angle" type="range" min="0" max="360" value="28"></label>
+          <label>Stroke <input id="strokeWidth" type="range" min="0" max="16" value="4"></label>
+          <label>Spacing <input id="letterSpacing" type="range" min="-8" max="18" value="0"></label>
+          <label>Wobble <input id="wobble" type="range" min="0" max="80" value="28"></label>
+          <label>Spin speed <input id="speed" type="range" min="0" max="100" value="35"></label>
+          <label>Glitch <input id="glitch" type="range" min="0" max="100" value="14"></label>
+          <label>Blur tail <input id="blur" type="range" min="0" max="20" value="2"></label>
+          <label>Noise <input id="noise" type="range" min="0" max="100" value="8"></label>
+        </div>
+
+        <div class="grid two checkgrid">
+          <label><input id="transparent" type="checkbox"> Transparent PNG</label>
+          <label><input id="pixelSnap" type="checkbox" checked> Pixel snap</label>
+          <label><input id="shadow" type="checkbox" checked> Drop shadow</label>
+          <label><input id="centerGuide" type="checkbox"> Center guide</label>
+        </div>
+
+        <div class="buttons">
+          <button id="randomizeBtn" type="button">Randomize</button>
+          <button id="pngBtn" type="button">Save PNG</button>
+          <button id="webmBtn" type="button">Record WebM</button>
+          <button id="gifBtn" type="button">Export GIF</button>
+        </div>
+        <p class="hint">GIF export uses gifenc from a CDN. PNG/WebM work with plain browser APIs.</p>
+      </aside>
+
+      <section class="stage-wrap">
+        <canvas id="stage" width="1200" height="675"></canvas>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
