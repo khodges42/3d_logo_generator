@@ -1,20 +1,23 @@
 const canvas = document.querySelector('#stage');
-const ctx = canvas.getContext('2d', { alpha: true });
+const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
 
 const fonts = [
-  'UnifrakturCook', 'UnifrakturMaguntia', 'Pirata One', 'Jacquard 12', 'Metal Mania',
+  'UnifrakturCook', 'Pirata One', 'Jacquard 12', 'UnifrakturMaguntia', 'Metal Mania',
   'New Rocker', 'MedievalSharp', 'Creepster', 'Frijole', 'Rye', 'Sancreek', 'Ewert',
-  'Monoton', 'Faster One', 'Rubik Glitch', 'Rubik Iso', 'Rubik Moonrocks', 'Archivo Black', 'Bebas Neue'
+  'Monoton', 'Faster One', 'Rubik Glitch', 'Rubik Iso', 'Rubik Moonrocks',
+  'Bungee Shade', 'Black Ops One', 'Trade Winds', 'Press Start 2P', 'Silkscreen',
+  'Libre Barcode 128 Text', 'Archivo Black', 'Bebas Neue'
 ];
 
 const $ = (id) => document.getElementById(id);
 const controls = {
   text: $('textInput'), font: $('fontSelect'), preset: $('presetSelect'),
   face: $('faceColor'), extrude: $('extrudeColor'), stroke: $('strokeColor'), bg: $('bgColor'),
-  size: $('fontSize'), depth: $('depth'), angle: $('angle'), strokeWidth: $('strokeWidth'),
-  letterSpacing: $('letterSpacing'), wobble: $('wobble'), speed: $('speed'), glitch: $('glitch'),
-  blur: $('blur'), noise: $('noise'), transparent: $('transparent'), pixelSnap: $('pixelSnap'),
-  shadow: $('shadow'), centerGuide: $('centerGuide')
+  size: $('fontSize'), depth: $('depth'), angle: $('angle'), tailSpread: $('tailSpread'),
+  perspective: $('perspective'), strokeWidth: $('strokeWidth'), letterSpacing: $('letterSpacing'),
+  tilt: $('tilt'), speed: $('speed'), glitch: $('glitch'), rgbSplit: $('rgbSplit'),
+  blur: $('blur'), noise: $('noise'), scanlines: $('scanlines'), transparent: $('transparent'),
+  pixelSnap: $('pixelSnap'), shadow: $('shadow'), centerGuide: $('centerGuide')
 };
 
 for (const font of fonts) {
@@ -23,117 +26,33 @@ for (const font of fonts) {
   opt.textContent = font;
   controls.font.append(opt);
 }
-controls.font.value = 'UnifrakturCook';
+controls.font.value = 'Pirata One';
 
 const presets = {
-  gothic: { face:'#ffffff', extrude:'#777777', stroke:'#000000', bg:'#050505', font:'UnifrakturCook', depth:80, angle:28, glitch:14, noise:8 },
-  acid: { face:'#f7ff00', extrude:'#ff2a2a', stroke:'#000000', bg:'#070707', font:'Frijole', depth:62, angle:315, glitch:22, noise:18 },
-  inferno: { face:'#ffffff', extrude:'#ff4b00', stroke:'#240000', bg:'#080000', font:'Metal Mania', depth:95, angle:38, glitch:8, noise:6 },
-  terminal: { face:'#d7ffd7', extrude:'#16ff56', stroke:'#001806', bg:'#000000', font:'Rubik Glitch', depth:54, angle:22, glitch:30, noise:10 },
-  bubblegum: { face:'#ffd6f5', extrude:'#8f6cff', stroke:'#18001d', bg:'#090012', font:'Monoton', depth:70, angle:335, glitch:10, noise:4 },
-  void: { face:'#f2f2f2', extrude:'#202020', stroke:'#000000', bg:'#000000', font:'Pirata One', depth:135, angle:18, glitch:38, noise:24 }
+  chrome:   { face:'#ffffff', extrude:'#aeb7c7', stroke:'#000000', bg:'#050505', font:'Pirata One', depth:105, angle:220, tailSpread:100, perspective:38, glitch:22, rgbSplit:18, noise:22, scanlines:18, blur:2 },
+  gothic:   { face:'#ffffff', extrude:'#777777', stroke:'#000000', bg:'#030303', font:'UnifrakturCook', depth:95, angle:230, tailSpread:92, perspective:34, glitch:16, rgbSplit:10, noise:12, scanlines:12, blur:2 },
+  blood:    { face:'#ffffff', extrude:'#b40020', stroke:'#140000', bg:'#050000', font:'Metal Mania', depth:125, angle:225, tailSpread:110, perspective:48, glitch:28, rgbSplit:30, noise:24, scanlines:25, blur:1 },
+  toxic:    { face:'#d7ffd7', extrude:'#16ff56', stroke:'#001806', bg:'#000000', font:'Rubik Glitch', depth:72, angle:215, tailSpread:120, perspective:20, glitch:55, rgbSplit:60, noise:34, scanlines:45, blur:0 },
+  inferno:  { face:'#ffffff', extrude:'#ff4b00', stroke:'#240000', bg:'#080000', font:'New Rocker', depth:120, angle:222, tailSpread:102, perspective:44, glitch:14, rgbSplit:8, noise:18, scanlines:10, blur:2 },
+  bubblegum:{ face:'#ffd6f5', extrude:'#8f6cff', stroke:'#18001d', bg:'#090012', font:'Monoton', depth:82, angle:225, tailSpread:105, perspective:28, glitch:20, rgbSplit:28, noise:10, scanlines:8, blur:1 },
+  void:     { face:'#f2f2f2', extrude:'#202020', stroke:'#000000', bg:'#000000', font:'Black Ops One', depth:150, angle:228, tailSpread:90, perspective:32, glitch:70, rgbSplit:55, noise:60, scanlines:50, blur:3 },
+  acid:     { face:'#f7ff00', extrude:'#ff2a2a', stroke:'#000000', bg:'#070707', font:'Frijole', depth:80, angle:220, tailSpread:115, perspective:36, glitch:38, rgbSplit:48, noise:30, scanlines:30, blur:1 }
 };
 
 function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function mix(a, b, t) { return a + (b - a) * t; }
 function shade(hex, i, depth) {
   const [r, g, b] = hexToRgb(hex);
-  const k = 0.35 + 0.65 * (i / Math.max(1, depth));
+  const k = 0.25 + 0.75 * (i / Math.max(1, depth));
   return `rgb(${Math.round(mix(0, r, k))},${Math.round(mix(0, g, k))},${Math.round(mix(0, b, k))})`;
 }
-
-
 function rand01(seed) {
   const x = Math.sin(seed * 12.9898) * 43758.5453123;
   return x - Math.floor(x);
-}
-
-function applyGlitch(amount, exportTime) {
-  if (amount <= 0) return;
-  const w = canvas.width;
-  const h = canvas.height;
-  const strength = amount / 100;
-  const source = ctx.getImageData(0, 0, w, h);
-
-  // Hard horizontal slice displacement. This is the part that makes it
-  // actually look broken instead of just adding tiny jitter inside the tail.
-  const slices = Math.floor(4 + strength * 38);
-  for (let s = 0; s < slices; s++) {
-    const y = Math.floor(rand01(exportTime + s * 19.17) * h);
-    const sliceH = Math.max(2, Math.floor(rand01(exportTime + s * 7.91) * (8 + strength * 42)));
-    const dx = Math.floor((rand01(exportTime + s * 3.33) - 0.5) * strength * 120);
-    ctx.putImageData(source, dx, 0, 0, y, w, Math.min(sliceH, h - y));
-  }
-
-  // RGB channel tear. Draw the whole canvas twice with blend-ish offsets.
-  const temp = document.createElement('canvas');
-  temp.width = w;
-  temp.height = h;
-  const tctx = temp.getContext('2d');
-  tctx.putImageData(source, 0, 0);
-
-  ctx.save();
-  ctx.globalCompositeOperation = 'screen';
-  ctx.globalAlpha = Math.min(0.55, 0.12 + strength * 0.45);
-  ctx.filter = 'sepia(1) saturate(8) hue-rotate(-45deg)';
-  ctx.drawImage(temp, Math.floor(strength * 12), 0);
-  ctx.filter = 'sepia(1) saturate(8) hue-rotate(145deg)';
-  ctx.drawImage(temp, -Math.floor(strength * 10), 0);
-  ctx.restore();
-
-  // Occasional black/white data bars.
-  ctx.save();
-  for (let i = 0; i < Math.floor(strength * 18); i++) {
-    const y = Math.floor(rand01(exportTime * 2 + i * 5.13) * h);
-    const x = Math.floor(rand01(exportTime * 3 + i * 9.44) * w);
-    const bw = Math.floor(20 + rand01(i + exportTime) * strength * 260);
-    const bh = Math.floor(1 + rand01(i * 2 + exportTime) * 7);
-    ctx.globalAlpha = 0.15 + strength * 0.45;
-    ctx.fillStyle = rand01(i + exportTime * 8) > 0.5 ? '#fff' : '#000';
-    ctx.fillRect(x, y, bw, bh);
-  }
-  ctx.restore();
-}
-
-function applyNoise(amount, exportTime) {
-  if (amount <= 0) return;
-  const w = canvas.width;
-  const h = canvas.height;
-  const strength = amount / 100;
-
-  // Pixel noise over every-ish pixel, not every 9th pixel. Previous version
-  // was too subtle on a high-res canvas.
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-  const step = strength > 0.55 ? 4 : 8;
-  const amp = 28 + strength * 120;
-  for (let i = 0; i < d.length; i += step) {
-    const v = (Math.random() - 0.5) * amp;
-    d[i] = Math.max(0, Math.min(255, d[i] + v));
-    d[i + 1] = Math.max(0, Math.min(255, d[i + 1] + v));
-    d[i + 2] = Math.max(0, Math.min(255, d[i + 2] + v));
-  }
-  ctx.putImageData(img, 0, 0);
-
-  // CRT/static speckles and scanline dirt.
-  ctx.save();
-  ctx.globalAlpha = 0.08 + strength * 0.25;
-  ctx.fillStyle = '#ffffff';
-  const specks = Math.floor(strength * 1800);
-  for (let i = 0; i < specks; i++) {
-    const x = Math.floor(rand01(exportTime + i * 1.71) * w);
-    const y = Math.floor(rand01(exportTime + i * 2.43) * h);
-    ctx.fillRect(x, y, 1 + Math.floor(strength * 2), 1);
-  }
-
-  ctx.globalAlpha = 0.05 + strength * 0.18;
-  ctx.fillStyle = '#000000';
-  const gap = Math.max(2, Math.floor(7 - strength * 4));
-  for (let y = 0; y < h; y += gap) ctx.fillRect(0, y, w, 1);
-  ctx.restore();
 }
 
 function drawSpacedText(context, text, x, y, spacing, mode = 'fill') {
@@ -146,42 +65,132 @@ function drawSpacedText(context, text, x, y, spacing, mode = 'fill') {
     let cx = x - total / 2;
     for (let i = 0; i < chars.length; i++) {
       const w = context.measureText(chars[i]).width;
-      if (mode === 'stroke') context.strokeText(chars[i], cx + w / 2, y + (lineIndex - (lines.length - 1) / 2) * lineHeight);
-      else context.fillText(chars[i], cx + w / 2, y + (lineIndex - (lines.length - 1) / 2) * lineHeight);
+      const yy = y + (lineIndex - (lines.length - 1) / 2) * lineHeight;
+      if (mode === 'stroke') context.strokeText(chars[i], cx + w / 2, yy);
+      else context.fillText(chars[i], cx + w / 2, yy);
       cx += w + spacing;
     }
   });
 }
 
+function applyGlitch(amount, rgbAmount, exportTime) {
+  const strength = amount / 100;
+  const rgb = rgbAmount / 100;
+  if (strength <= 0 && rgb <= 0) return;
+
+  const w = canvas.width, h = canvas.height;
+  const source = ctx.getImageData(0, 0, w, h);
+  const temp = document.createElement('canvas');
+  temp.width = w; temp.height = h;
+  const tctx = temp.getContext('2d', { willReadFrequently: true });
+  tctx.putImageData(source, 0, 0);
+
+  if (strength > 0) {
+    const slices = Math.floor(3 + strength * 65);
+    for (let s = 0; s < slices; s++) {
+      const y = Math.floor(rand01(exportTime * 3 + s * 19.17) * h);
+      const sliceH = Math.max(2, Math.floor(2 + rand01(exportTime + s * 7.91) * (10 + strength * 70)));
+      const dx = Math.floor((rand01(exportTime + s * 3.33) - 0.5) * strength * 220);
+      ctx.drawImage(temp, 0, y, w, Math.min(sliceH, h - y), dx, y, w, Math.min(sliceH, h - y));
+    }
+
+    ctx.save();
+    for (let i = 0; i < Math.floor(strength * 36); i++) {
+      const y = Math.floor(rand01(exportTime * 8 + i * 5.13) * h);
+      const x = Math.floor(rand01(exportTime * 7 + i * 9.44) * w);
+      const bw = Math.floor(30 + rand01(i + exportTime) * strength * 420);
+      const bh = Math.floor(1 + rand01(i * 2 + exportTime) * 12);
+      ctx.globalAlpha = 0.18 + strength * 0.55;
+      ctx.fillStyle = rand01(i + exportTime * 8) > 0.52 ? '#fff' : '#000';
+      ctx.fillRect(x, y, bw, bh);
+    }
+    ctx.restore();
+  }
+
+  if (rgb > 0) {
+    const shift = Math.floor(2 + rgb * 34);
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.globalAlpha = 0.18 + rgb * 0.55;
+    ctx.filter = 'sepia(1) saturate(9) hue-rotate(-55deg)';
+    ctx.drawImage(temp, shift, 0);
+    ctx.filter = 'sepia(1) saturate(9) hue-rotate(145deg)';
+    ctx.drawImage(temp, -shift, 0);
+    ctx.restore();
+  }
+}
+
+function applyNoise(amount, scanAmount, exportTime) {
+  const strength = amount / 100;
+  const scan = scanAmount / 100;
+  if (strength <= 0 && scan <= 0) return;
+
+  const w = canvas.width, h = canvas.height;
+  if (strength > 0) {
+    const img = ctx.getImageData(0, 0, w, h);
+    const d = img.data;
+    const amp = 45 + strength * 170;
+    const every = strength > 0.45 ? 4 : 8;
+    for (let i = 0; i < d.length; i += every) {
+      const v = (Math.random() - 0.5) * amp;
+      d[i] = clamp(d[i] + v, 0, 255);
+      d[i + 1] = clamp(d[i + 1] + v, 0, 255);
+      d[i + 2] = clamp(d[i + 2] + v, 0, 255);
+      d[i + 3] = d[i + 3];
+    }
+    ctx.putImageData(img, 0, 0);
+
+    ctx.save();
+    ctx.globalAlpha = 0.10 + strength * 0.35;
+    ctx.fillStyle = '#fff';
+    const specks = Math.floor(strength * 6000);
+    for (let i = 0; i < specks; i++) {
+      const x = Math.floor(rand01(exportTime + i * 1.71) * w);
+      const y = Math.floor(rand01(exportTime + i * 2.43) * h);
+      ctx.fillRect(x, y, 1 + Math.floor(strength * 3), 1);
+    }
+    ctx.restore();
+  }
+
+  if (scan > 0) {
+    ctx.save();
+    const gap = Math.max(2, Math.floor(8 - scan * 5));
+    ctx.globalAlpha = 0.08 + scan * 0.35;
+    ctx.fillStyle = '#000';
+    for (let y = 0; y < h; y += gap) ctx.fillRect(0, y, w, 1 + Math.floor(scan * 2));
+    ctx.globalAlpha = 0.035 + scan * 0.13;
+    ctx.fillStyle = '#fff';
+    for (let y = Math.floor((exportTime * 11) % gap); y < h; y += gap * 2) ctx.fillRect(0, y, w, 1);
+    ctx.restore();
+  }
+}
+
 let time = 0;
 function render(exportTime = time) {
   const w = canvas.width, h = canvas.height;
-  const text = controls.text.value || 'type something';
+  const text = controls.text.value || 'Y2K CHROME';
   const size = Number(controls.size.value);
   const depth = Number(controls.depth.value);
-  const baseAngle = Number(controls.angle.value) * Math.PI / 180;
-  const wobble = Number(controls.wobble.value) / 100;
-
-  // Full fake-Y-axis spin.
-  // Important: this is NOT Math.sin(phase). Math.sin() only eases back and forth.
-  // Letting yRot increase forever gives a continuous 360° rotation.
-  const phase = exportTime * 0.055;
-  const yRot = phase;
-  const spinCos = Math.cos(yRot);
-  const spinSin = Math.sin(yRot);
-
-  // Negative scaleX is intentional: when the text turns past 90°, the face mirrors,
-  // which sells the illusion that you're seeing the back side of the same object.
-  const faceScaleX = spinCos;
-  const shearX = spinSin * 0.18 * wobble;
-
-  // Keep the extrusion vector fixed in the text's LOCAL space.
-  // Because the canvas transform below is applied to both the face and the extrusion,
-  // the back part rotates with the letters instead of swinging around independently.
-  const dx = Math.cos(baseAngle) * 1.45;
-  const dy = Math.sin(baseAngle) * 1.45;
-  const glitch = Number(controls.glitch.value);
   const spacing = Number(controls.letterSpacing.value);
+  const baseAngle = Number(controls.angle.value) * Math.PI / 180;
+  const tailSpread = Number(controls.tailSpread.value) / 100;
+  const perspective = Number(controls.perspective.value) / 100;
+  const tilt = Number(controls.tilt.value) * Math.PI / 180;
+
+  const phase = exportTime * 0.042;
+  const spinCos = Math.cos(phase);
+  const spinSin = Math.sin(phase);
+
+  // The face does the full 360 via horizontal compression + mirroring.
+  // The extrusion DOES NOT rotate around its own angle anymore.
+  // It stays in a stable screen-space direction and only gets longer/shorter
+  // according to the fake perspective phase. This kills the wild tail swing.
+  const faceScaleX = clamp(spinCos, -1, 1);
+  const depthScale = 0.35 + 0.65 * Math.abs(spinSin);
+  const sideFlip = spinSin >= 0 ? 1 : -1;
+  const dx = Math.cos(baseAngle) * 1.35 * tailSpread * sideFlip;
+  const dy = Math.sin(baseAngle) * 1.35 * tailSpread;
+  const zPush = perspective * spinSin * 0.55;
 
   ctx.clearRect(0, 0, w, h);
   if (!controls.transparent.checked) {
@@ -190,11 +199,11 @@ function render(exportTime = time) {
   }
 
   const x = controls.pixelSnap.checked ? Math.round(w / 2) : w / 2;
-  const y = controls.pixelSnap.checked ? Math.round(h / 2) : h / 2;
+  const y = controls.pixelSnap.checked ? Math.round(h / 2 + 12) : h / 2 + 12;
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.transform(faceScaleX, 0, shearX, 1, 0, 0);
+  ctx.rotate(tilt);
   ctx.font = `${size}px '${controls.font.value}', serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
@@ -203,20 +212,28 @@ function render(exportTime = time) {
 
   if (controls.shadow.checked) {
     ctx.shadowColor = '#000';
-    ctx.shadowBlur = 24;
-    ctx.shadowOffsetY = 22;
+    ctx.shadowBlur = 26;
+    ctx.shadowOffsetY = 18;
   }
 
   ctx.filter = `blur(${Number(controls.blur.value)}px)`;
   for (let i = depth; i > 0; i--) {
-    const n = Math.sin(i * 12.9898 + exportTime) * 43758.5453;
-    const jitter = glitch ? ((n - Math.floor(n)) - 0.5) * glitch * (i / Math.max(1, depth)) * 0.45 : 0;
+    const t = i / Math.max(1, depth);
+    const px = dx * i * depthScale / 1.8;
+    const py = dy * i * (0.8 + perspective * 0.35) / 1.8;
+    const scale = 1 + zPush * t;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.scale(faceScaleX * scale, scale);
     ctx.fillStyle = shade(controls.extrude.value, i, depth);
-    drawSpacedText(ctx, text, dx * i + jitter, dy * i, spacing, 'fill');
+    drawSpacedText(ctx, text, 0, 0, spacing, 'fill');
+    ctx.restore();
   }
 
   ctx.filter = 'none';
   ctx.shadowColor = 'transparent';
+  ctx.save();
+  ctx.scale(faceScaleX, 1);
   ctx.lineWidth = Number(controls.strokeWidth.value);
   ctx.strokeStyle = controls.stroke.value;
   ctx.fillStyle = controls.face.value;
@@ -224,11 +241,13 @@ function render(exportTime = time) {
   drawSpacedText(ctx, text, 0, 0, spacing, 'fill');
   ctx.restore();
 
-  applyGlitch(glitch, exportTime);
-  applyNoise(Number(controls.noise.value), exportTime);
+  ctx.restore();
+
+  applyGlitch(Number(controls.glitch.value), Number(controls.rgbSplit.value), exportTime);
+  applyNoise(Number(controls.noise.value), Number(controls.scanlines.value), exportTime);
+
   if (controls.centerGuide.checked) {
-    ctx.strokeStyle = '#ff000066';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#ff000099'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
   }
 }
@@ -239,62 +258,61 @@ function tick() {
   requestAnimationFrame(tick);
 }
 
-document.querySelectorAll('input, textarea, select').forEach(el => el.addEventListener('input', render));
-controls.preset.addEventListener('change', () => {
-  const p = presets[controls.preset.value];
-  controls.face.value = p.face; controls.extrude.value = p.extrude; controls.stroke.value = p.stroke;
-  controls.bg.value = p.bg; controls.font.value = p.font; controls.depth.value = p.depth;
-  controls.angle.value = p.angle; controls.glitch.value = p.glitch; controls.noise.value = p.noise;
-  render();
-});
-
-$('randomizeBtn').addEventListener('click', () => {
-  controls.font.value = fonts[Math.floor(Math.random() * fonts.length)];
-  controls.depth.value = Math.floor(30 + Math.random() * 130);
-  controls.angle.value = Math.floor(Math.random() * 360);
-  controls.wobble.value = Math.floor(Math.random() * 70);
-  controls.glitch.value = Math.floor(Math.random() * 45);
-  controls.noise.value = Math.floor(Math.random() * 30);
-});
+function applyPreset(name) {
+  const p = presets[name];
+  if (!p) return;
+  controls.face.value = p.face; controls.extrude.value = p.extrude; controls.stroke.value = p.stroke; controls.bg.value = p.bg;
+  controls.font.value = p.font; controls.depth.value = p.depth; controls.angle.value = p.angle; controls.tailSpread.value = p.tailSpread;
+  controls.perspective.value = p.perspective; controls.glitch.value = p.glitch; controls.rgbSplit.value = p.rgbSplit;
+  controls.noise.value = p.noise; controls.scanlines.value = p.scanlines; controls.blur.value = p.blur;
+}
 
 function downloadBlob(blob, filename) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
   a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-$('pngBtn').addEventListener('click', () => {
-  render();
-  canvas.toBlob(blob => downloadBlob(blob, '3d-type.png'), 'image/png');
-});
-
+$('pngBtn').addEventListener('click', () => canvas.toBlob(b => downloadBlob(b, 'y2k-chrome.png')));
 $('webmBtn').addEventListener('click', async () => {
   const stream = canvas.captureStream(30);
-  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+  const rec = new MediaRecorder(stream, { mimeType: 'video/webm' });
   const chunks = [];
-  recorder.ondataavailable = e => chunks.push(e.data);
-  recorder.onstop = () => downloadBlob(new Blob(chunks, { type: 'video/webm' }), '3d-type.webm');
-  recorder.start();
-  setTimeout(() => recorder.stop(), 3000);
+  rec.ondataavailable = e => chunks.push(e.data);
+  rec.onstop = () => downloadBlob(new Blob(chunks, { type:'video/webm' }), 'y2k-chrome.webm');
+  rec.start();
+  setTimeout(() => rec.stop(), 3000);
 });
-
 $('gifBtn').addEventListener('click', async () => {
-  const { GIFEncoder, quantize, applyPalette } = await import('https://cdn.jsdelivr.net/npm/gifenc@1.0.3/+esm');
+  const mod = await import('https://cdn.jsdelivr.net/npm/gifenc@1.0.3/+esm');
+  const { GIFEncoder, quantize, applyPalette } = mod;
   const gif = GIFEncoder();
-  const frames = 48;
-  const delay = 50;
+  const frames = 72;
+  const oldTime = time;
   for (let f = 0; f < frames; f++) {
-    render(f * 2.2);
-    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    const palette = quantize(data, 256);
-    const index = applyPalette(data, palette);
-    gif.writeFrame(index, canvas.width, canvas.height, { palette, delay });
-    await new Promise(r => setTimeout(r, 0));
+    render(f * 3.25);
+    const image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const palette = quantize(image.data, 256);
+    const index = applyPalette(image.data, palette);
+    gif.writeFrame(index, canvas.width, canvas.height, { palette, delay: 42 });
   }
   gif.finish();
-  downloadBlob(new Blob([gif.bytes()], { type: 'image/gif' }), '3d-type.gif');
+  time = oldTime;
+  downloadBlob(new Blob([gif.bytes()], { type: 'image/gif' }), 'y2k-chrome.gif');
 });
+$('randomizeBtn').addEventListener('click', () => {
+  const presetNames = Object.keys(presets);
+  applyPreset(presetNames[Math.floor(Math.random() * presetNames.length)]);
+  controls.font.value = fonts[Math.floor(Math.random() * fonts.length)];
+  controls.angle.value = Math.floor(190 + Math.random() * 80);
+  controls.depth.value = Math.floor(40 + Math.random() * 160);
+  controls.tailSpread.value = Math.floor(70 + Math.random() * 80);
+});
+controls.preset.addEventListener('change', e => applyPreset(e.target.value));
+document.querySelectorAll('input, textarea, select').forEach(el => el.addEventListener('input', () => render()));
 
+applyPreset('chrome');
+render();
 tick();
