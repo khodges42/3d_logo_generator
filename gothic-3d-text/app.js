@@ -89,10 +89,21 @@ function applyGlitch(amount, rgbAmount, exportTime) {
     const slices = Math.floor(3 + strength * 65);
     for (let s = 0; s < slices; s++) {
       const y = Math.floor(rand01(exportTime * 3 + s * 19.17) * h);
-      const sliceH = Math.max(2, Math.floor(2 + rand01(exportTime + s * 7.91) * (10 + strength * 70)));
-      const dx = Math.floor((rand01(exportTime + s * 3.33) - 0.5) * strength * 220);
+      const sliceH = Math.max(3, Math.floor(3 + rand01(exportTime + s * 7.91) * (18 + strength * 95)));
+      const dx = Math.floor((rand01(exportTime + s * 3.33) - 0.5) * strength * 320);
       ctx.drawImage(temp, 0, y, w, Math.min(sliceH, h - y), dx, y, w, Math.min(sliceH, h - y));
     }
+
+    // Big obvious broken-signal jumps. These are intentionally not subtle.
+    ctx.save();
+    ctx.globalAlpha = 0.25 + strength * 0.45;
+    for (let s = 0; s < Math.floor(1 + strength * 8); s++) {
+      const y = Math.floor(h * (0.30 + rand01(exportTime * 4 + s) * 0.45));
+      const sliceH = Math.floor(10 + strength * 38);
+      const dx = Math.floor((rand01(exportTime * 12 + s) - 0.5) * strength * 180);
+      ctx.drawImage(temp, 0, y, w, sliceH, dx, y, w, sliceH);
+    }
+    ctx.restore();
 
     ctx.save();
     for (let i = 0; i < Math.floor(strength * 36); i++) {
@@ -177,20 +188,20 @@ function render(exportTime = time) {
   const perspective = Number(controls.perspective.value) / 100;
   const tilt = Number(controls.tilt.value) * Math.PI / 180;
 
-  const phase = exportTime * 0.042;
+  const phase = exportTime * 0.032;
   const spinCos = Math.cos(phase);
   const spinSin = Math.sin(phase);
 
-  // The face does the full 360 via horizontal compression + mirroring.
-  // The extrusion DOES NOT rotate around its own angle anymore.
-  // It stays in a stable screen-space direction and only gets longer/shorter
-  // according to the fake perspective phase. This kills the wild tail swing.
+  // Full spin without the old 'orbiting tail' bug:
+  // - the face rotates by compressing/mirroring on X
+  // - the extrusion direction stays fixed in screen space
+  // - only the apparent tail length breathes with the turn
+  // This keeps the back attached instead of swinging around like a loose arm.
   const faceScaleX = clamp(spinCos, -1, 1);
-  const depthScale = 0.35 + 0.65 * Math.abs(spinSin);
-  const sideFlip = spinSin >= 0 ? 1 : -1;
-  const dx = Math.cos(baseAngle) * 1.35 * tailSpread * sideFlip;
+  const depthScale = 0.42 + 0.58 * Math.abs(spinSin);
+  const dx = Math.cos(baseAngle) * 1.35 * tailSpread;
   const dy = Math.sin(baseAngle) * 1.35 * tailSpread;
-  const zPush = perspective * spinSin * 0.55;
+  const zPush = perspective * Math.abs(spinSin) * 0.22;
 
   ctx.clearRect(0, 0, w, h);
   if (!controls.transparent.checked) {
@@ -253,7 +264,9 @@ function render(exportTime = time) {
 }
 
 function tick() {
-  time += Number(controls.speed.value) / 20;
+  // Speed is intentionally conservative. Earlier versions coupled speed too
+  // aggressively to the fake perspective, which made the tail look chaotic.
+  time += Number(controls.speed.value) / 55;
   render();
   requestAnimationFrame(tick);
 }
