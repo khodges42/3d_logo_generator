@@ -1,5 +1,5 @@
 const canvas = document.querySelector('#stage');
-const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
+const ctx = canvas.getContext('2d', { alpha: true });
 
 const fonts = [
   'UnifrakturCook', 'Pirata One', 'Jacquard 12', 'UnifrakturMaguntia', 'Metal Mania',
@@ -16,7 +16,7 @@ const controls = {
   size: $('fontSize'), depth: $('depth'), angle: $('angle'), tailSpread: $('tailSpread'),
   perspective: $('perspective'), strokeWidth: $('strokeWidth'), letterSpacing: $('letterSpacing'),
   tilt: $('tilt'), speed: $('speed'), glitch: $('glitch'), rgbSplit: $('rgbSplit'),
-  blur: $('blur'), noise: $('noise'), scanlines: $('scanlines'), transparent: $('transparent'),
+  blur: $('blur'), quality: $('quality'), noise: $('noise'), scanlines: $('scanlines'), transparent: $('transparent'),
   pixelSnap: $('pixelSnap'), shadow: $('shadow'), centerGuide: $('centerGuide')
 };
 
@@ -29,7 +29,7 @@ for (const font of fonts) {
 controls.font.value = 'Pirata One';
 
 const presets = {
-  chrome:   { face:'#ffffff', extrude:'#aeb7c7', stroke:'#000000', bg:'#050505', font:'Pirata One', depth:105, angle:220, tailSpread:100, perspective:38, glitch:22, rgbSplit:18, noise:22, scanlines:18, blur:2 },
+  chrome:   { face:'#ffffff', extrude:'#aeb7c7', stroke:'#000000', bg:'#050505', font:'Pirata One', depth:92, angle:220, tailSpread:100, perspective:38, glitch:22, rgbSplit:18, noise:22, scanlines:18, blur:2 },
   gothic:   { face:'#ffffff', extrude:'#777777', stroke:'#000000', bg:'#030303', font:'UnifrakturCook', depth:95, angle:230, tailSpread:92, perspective:34, glitch:16, rgbSplit:10, noise:12, scanlines:12, blur:2 },
   blood:    { face:'#ffffff', extrude:'#b40020', stroke:'#140000', bg:'#050000', font:'Metal Mania', depth:125, angle:225, tailSpread:110, perspective:48, glitch:28, rgbSplit:30, noise:24, scanlines:25, blur:1 },
   toxic:    { face:'#d7ffd7', extrude:'#16ff56', stroke:'#001806', bg:'#000000', font:'Rubik Glitch', depth:72, angle:215, tailSpread:120, perspective:20, glitch:55, rgbSplit:60, noise:34, scanlines:45, blur:0 },
@@ -55,22 +55,46 @@ function rand01(seed) {
   return x - Math.floor(x);
 }
 
+const measureCache = new Map();
+function getCharWidths(context, font, text, spacing) {
+  const key = `${font}|${spacing}|${text}`;
+  if (measureCache.has(key)) return measureCache.get(key);
+  const lines = text.split('\n').map(line => {
+    const chars = [...line];
+    const widths = chars.map(ch => context.measureText(ch).width);
+    const total = widths.reduce((a, b) => a + b, 0) + Math.max(0, chars.length - 1) * spacing;
+    return { chars, widths, total };
+  });
+  if (measureCache.size > 80) measureCache.clear();
+  measureCache.set(key, lines);
+  return lines;
+}
+
 function drawSpacedText(context, text, x, y, spacing, mode = 'fill') {
-  const lines = text.split('\n');
+  const font = context.font;
+  const lines = getCharWidths(context, font, text, spacing);
   const lineHeight = Number(controls.size.value) * 0.9;
   lines.forEach((line, lineIndex) => {
-    const chars = [...line];
-    const widths = chars.map(ch => context.measureText(ch).width + spacing);
-    const total = widths.reduce((a, b) => a + b, 0) - spacing;
-    let cx = x - total / 2;
-    for (let i = 0; i < chars.length; i++) {
-      const w = context.measureText(chars[i]).width;
-      const yy = y + (lineIndex - (lines.length - 1) / 2) * lineHeight;
-      if (mode === 'stroke') context.strokeText(chars[i], cx + w / 2, yy);
-      else context.fillText(chars[i], cx + w / 2, yy);
+    let cx = x - line.total / 2;
+    const yy = y + (lineIndex - (lines.length - 1) / 2) * lineHeight;
+    for (let i = 0; i < line.chars.length; i++) {
+      const w = line.widths[i];
+      if (mode === 'stroke') context.strokeText(line.chars[i], cx + w / 2, yy);
+      else context.fillText(line.chars[i], cx + w / 2, yy);
       cx += w + spacing;
     }
   });
+}
+
+const fxCanvas = document.createElement('canvas');
+const fxCtx = fxCanvas.getContext('2d', { alpha: true });
+function copyToFx() {
+  if (fxCanvas.width !== canvas.width || fxCanvas.height !== canvas.height) {
+    fxCanvas.width = canvas.width;
+    fxCanvas.height = canvas.height;
+  }
+  fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
+  fxCtx.drawImage(canvas, 0, 0);
 }
 
 function applyGlitch(amount, rgbAmount, exportTime) {
@@ -79,39 +103,35 @@ function applyGlitch(amount, rgbAmount, exportTime) {
   if (strength <= 0 && rgb <= 0) return;
 
   const w = canvas.width, h = canvas.height;
-  const source = ctx.getImageData(0, 0, w, h);
-  const temp = document.createElement('canvas');
-  temp.width = w; temp.height = h;
-  const tctx = temp.getContext('2d', { willReadFrequently: true });
-  tctx.putImageData(source, 0, 0);
+  copyToFx();
 
   if (strength > 0) {
-    const slices = Math.floor(3 + strength * 65);
+    // Slice tearing without getImageData; much faster on Safari/mobile.
+    const slices = Math.floor(2 + strength * 24);
     for (let s = 0; s < slices; s++) {
       const y = Math.floor(rand01(exportTime * 3 + s * 19.17) * h);
-      const sliceH = Math.max(3, Math.floor(3 + rand01(exportTime + s * 7.91) * (18 + strength * 95)));
-      const dx = Math.floor((rand01(exportTime + s * 3.33) - 0.5) * strength * 320);
-      ctx.drawImage(temp, 0, y, w, Math.min(sliceH, h - y), dx, y, w, Math.min(sliceH, h - y));
+      const sliceH = Math.max(2, Math.floor(2 + rand01(exportTime + s * 7.91) * (8 + strength * 42)));
+      const dx = Math.floor((rand01(exportTime + s * 3.33) - 0.5) * strength * 190);
+      ctx.drawImage(fxCanvas, 0, y, w, Math.min(sliceH, h - y), dx, y, w, Math.min(sliceH, h - y));
     }
 
-    // Big obvious broken-signal jumps. These are intentionally not subtle.
     ctx.save();
-    ctx.globalAlpha = 0.25 + strength * 0.45;
-    for (let s = 0; s < Math.floor(1 + strength * 8); s++) {
-      const y = Math.floor(h * (0.30 + rand01(exportTime * 4 + s) * 0.45));
-      const sliceH = Math.floor(10 + strength * 38);
-      const dx = Math.floor((rand01(exportTime * 12 + s) - 0.5) * strength * 180);
-      ctx.drawImage(temp, 0, y, w, sliceH, dx, y, w, sliceH);
+    ctx.globalAlpha = 0.20 + strength * 0.50;
+    for (let s = 0; s < Math.floor(1 + strength * 5); s++) {
+      const y = Math.floor(h * (0.28 + rand01(exportTime * 4 + s) * 0.50));
+      const sliceH = Math.floor(6 + strength * 30);
+      const dx = Math.floor((rand01(exportTime * 12 + s) - 0.5) * strength * 150);
+      ctx.drawImage(fxCanvas, 0, y, w, sliceH, dx, y, w, sliceH);
     }
     ctx.restore();
 
     ctx.save();
-    for (let i = 0; i < Math.floor(strength * 36); i++) {
+    for (let i = 0; i < Math.floor(strength * 24); i++) {
       const y = Math.floor(rand01(exportTime * 8 + i * 5.13) * h);
       const x = Math.floor(rand01(exportTime * 7 + i * 9.44) * w);
-      const bw = Math.floor(30 + rand01(i + exportTime) * strength * 420);
-      const bh = Math.floor(1 + rand01(i * 2 + exportTime) * 12);
-      ctx.globalAlpha = 0.18 + strength * 0.55;
+      const bw = Math.floor(20 + rand01(i + exportTime) * strength * 300);
+      const bh = Math.floor(1 + rand01(i * 2 + exportTime) * 8);
+      ctx.globalAlpha = 0.16 + strength * 0.48;
       ctx.fillStyle = rand01(i + exportTime * 8) > 0.52 ? '#fff' : '#000';
       ctx.fillRect(x, y, bw, bh);
     }
@@ -119,14 +139,14 @@ function applyGlitch(amount, rgbAmount, exportTime) {
   }
 
   if (rgb > 0) {
-    const shift = Math.floor(2 + rgb * 34);
+    const shift = Math.floor(1 + rgb * 26);
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    ctx.globalAlpha = 0.18 + rgb * 0.55;
+    ctx.globalAlpha = 0.16 + rgb * 0.50;
     ctx.filter = 'sepia(1) saturate(9) hue-rotate(-55deg)';
-    ctx.drawImage(temp, shift, 0);
+    ctx.drawImage(fxCanvas, shift, 0);
     ctx.filter = 'sepia(1) saturate(9) hue-rotate(145deg)';
-    ctx.drawImage(temp, -shift, 0);
+    ctx.drawImage(fxCanvas, -shift, 0);
     ctx.restore();
   }
 }
@@ -138,27 +158,24 @@ function applyNoise(amount, scanAmount, exportTime) {
 
   const w = canvas.width, h = canvas.height;
   if (strength > 0) {
-    const img = ctx.getImageData(0, 0, w, h);
-    const d = img.data;
-    const amp = 45 + strength * 170;
-    const every = strength > 0.45 ? 4 : 8;
-    for (let i = 0; i < d.length; i += every) {
-      const v = (Math.random() - 0.5) * amp;
-      d[i] = clamp(d[i] + v, 0, 255);
-      d[i + 1] = clamp(d[i + 1] + v, 0, 255);
-      d[i + 2] = clamp(d[i + 2] + v, 0, 255);
-      d[i + 3] = d[i + 3];
-    }
-    ctx.putImageData(img, 0, 0);
-
+    // Drawn static instead of per-pixel mutation. Dramatically cheaper.
     ctx.save();
-    ctx.globalAlpha = 0.10 + strength * 0.35;
-    ctx.fillStyle = '#fff';
-    const specks = Math.floor(strength * 6000);
-    for (let i = 0; i < specks; i++) {
-      const x = Math.floor(rand01(exportTime + i * 1.71) * w);
+    const lines = Math.floor(strength * 180);
+    for (let i = 0; i < lines; i++) {
       const y = Math.floor(rand01(exportTime + i * 2.43) * h);
-      ctx.fillRect(x, y, 1 + Math.floor(strength * 3), 1);
+      const x = Math.floor(rand01(exportTime + i * 1.71) * w);
+      const len = Math.floor(8 + rand01(i + exportTime) * strength * 220);
+      ctx.globalAlpha = 0.035 + strength * 0.18;
+      ctx.fillStyle = rand01(i + exportTime * 9) > 0.5 ? '#fff' : '#000';
+      ctx.fillRect(x, y, len, 1);
+    }
+    const specks = Math.floor(strength * 1200);
+    ctx.globalAlpha = 0.08 + strength * 0.20;
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < specks; i++) {
+      const x = Math.floor(rand01(exportTime * 11 + i * 1.11) * w);
+      const y = Math.floor(rand01(exportTime * 13 + i * 1.37) * h);
+      ctx.fillRect(x, y, 1, 1);
     }
     ctx.restore();
   }
@@ -169,7 +186,7 @@ function applyNoise(amount, scanAmount, exportTime) {
     ctx.globalAlpha = 0.08 + scan * 0.35;
     ctx.fillStyle = '#000';
     for (let y = 0; y < h; y += gap) ctx.fillRect(0, y, w, 1 + Math.floor(scan * 2));
-    ctx.globalAlpha = 0.035 + scan * 0.13;
+    ctx.globalAlpha = 0.04 + scan * 0.12;
     ctx.fillStyle = '#fff';
     for (let y = Math.floor((exportTime * 11) % gap); y < h; y += gap * 2) ctx.fillRect(0, y, w, 1);
     ctx.restore();
@@ -228,7 +245,9 @@ function render(exportTime = time) {
   }
 
   ctx.filter = `blur(${Number(controls.blur.value)}px)`;
-  for (let i = depth; i > 0; i--) {
+  const maxLayers = Number(controls.quality?.value ?? 42);
+  const step = Math.max(1, Math.ceil(depth / Math.max(1, maxLayers)));
+  for (let i = depth; i > 0; i -= step) {
     const t = i / Math.max(1, depth);
     const px = dx * i * depthScale / 1.8;
     const py = dy * i * (0.8 + perspective * 0.35) / 1.8;
@@ -263,11 +282,14 @@ function render(exportTime = time) {
   }
 }
 
-function tick() {
-  // Speed is intentionally conservative. Earlier versions coupled speed too
-  // aggressively to the fake perspective, which made the tail look chaotic.
-  time += Number(controls.speed.value) / 55;
-  render();
+let lastFrame = 0;
+function tick(now = 0) {
+  // 30 FPS is plenty for this effect and avoids melting Safari/mobile.
+  if (now - lastFrame >= 33) {
+    lastFrame = now;
+    time += Number(controls.speed.value) / 55;
+    render();
+  }
   requestAnimationFrame(tick);
 }
 
