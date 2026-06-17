@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ASCII Banner Generator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">segfault.tools</p>
+        <h1>ASCII Banner Generator</h1>
+        <p class="lede">Make dramatic terminal banners, ANSI blocks, dividers, and little cursed computer shrines.</p>
+      </div>
+      <button id="randomize" class="ghost">random omen</button>
+    </header>
+
+    <section class="panel controls">
+      <label>Text
+        <input id="text" value="SEGFAULT" maxlength="32" />
+      </label>
+
+      <label>Font
+        <select id="font">
+          <option value="block">Block</option>
+          <option value="shadow">Shadow</option>
+          <option value="goth">Goth Terminal</option>
+          <option value="runes">Rune-ish</option>
+          <option value="thin">Thin Wire</option>
+        </select>
+      </label>
+
+      <label>Frame
+        <select id="frame">
+          <option value="none">None</option>
+          <option value="box">Box</option>
+          <option value="double">Double Box</option>
+          <option value="sigil">Sigil</option>
+          <option value="cathedral">Cathedral</option>
+        </select>
+      </label>
+
+      <label>Palette
+        <select id="palette">
+          <option value="bone">Bone</option>
+          <option value="blood">Blood</option>
+          <option value="acid">Acid</option>
+          <option value="void">Void</option>
+          <option value="amber">Amber CRT</option>
+        </select>
+      </label>
+
+      <label>Width
+        <input id="width" type="range" min="50" max="120" value="76" />
+      </label>
+
+      <label>Noise
+        <input id="noise" type="range" min="0" max="35" value="7" />
+      </label>
+
+      <label class="check"><input id="ansi" type="checkbox" checked /> ANSI color preview</label>
+    </section>
+
+    <section class="panel output-wrap">
+      <div class="toolbar">
+        <span id="meta">ready</span>
+        <div>
+          <button id="copy">copy</button>
+          <button id="download">download .txt</button>
+        </div>
+      </div>
+      <pre id="output" aria-label="Generated ASCII banner"></pre>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
