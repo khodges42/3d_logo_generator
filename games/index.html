@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<title>Arcade Index</title>
+
+<style>
+:root{
+    --bg:#070816;
+    --panel:rgba(12,16,36,.82);
+    --ink:#f4f7ff;
+    --muted:#9aa7d9;
+    --cyan:#71f6ff;
+    --pink:#ff5fd7;
+    --gold:#ffd36b;
+}
+
+*{ box-sizing:border-box; }
+
+body{
+    margin:0;
+    min-height:100vh;
+    overflow:hidden;
+    font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color:var(--ink);
+    background:
+        radial-gradient(circle at 20% 15%, rgba(255,95,215,.25), transparent 28%),
+        radial-gradient(circle at 80% 70%, rgba(113,246,255,.18), transparent 30%),
+        var(--bg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:-20%;
+    background-image:
+        linear-gradient(rgba(113,246,255,.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(113,246,255,.12) 1px, transparent 1px);
+    background-size:48px 48px;
+    transform:perspective(500px) rotateX(60deg);
+    animation:gridDrift 12s linear infinite;
+}
+
+body::after{
+    content:"✦  ⚔  ◆  ☾  ✧  ◈  ★  ✦  ⚙";
+    position:fixed;
+    inset:auto 0 12%;
+    font-size:4rem;
+    letter-spacing:2rem;
+    color:rgba(255,255,255,.05);
+    white-space:nowrap;
+    animation:parallax 22s linear infinite;
+}
+
+@keyframes gridDrift{
+    from{ transform:perspective(500px) rotateX(60deg) translateY(0); }
+    to{ transform:perspective(500px) rotateX(60deg) translateY(48px); }
+}
+
+@keyframes parallax{
+    from{ transform:translateX(0); }
+    to{ transform:translateX(-50%); }
+}
+
+.index{
+    position:relative;
+    width:min(760px,92vw);
+    padding:2.5rem;
+    background:var(--panel);
+    border:1px solid rgba(113,246,255,.45);
+    box-shadow:
+        0 0 40px rgba(113,246,255,.18),
+        inset 0 0 30px rgba(255,95,215,.08);
+    backdrop-filter:blur(10px);
+}
+
+h1{
+    margin:0;
+    text-align:center;
+    font-size:clamp(2rem,7vw,4rem);
+    color:var(--cyan);
+    text-shadow:0 0 16px rgba(113,246,255,.8);
+}
+
+.subtitle{
+    margin:1rem 0 2.5rem;
+    text-align:center;
+    color:var(--muted);
+}
+
+.shelf{
+    border-top:1px solid rgba(255,255,255,.12);
+}
+
+.entry{
+    display:flex;
+    justify-content:space-between;
+    gap:1rem;
+    padding:1.1rem;
+    color:var(--ink);
+    text-decoration:none;
+    border-bottom:1px solid rgba(255,255,255,.12);
+    transition:.18s ease;
+}
+
+.entry:hover{
+    background:rgba(113,246,255,.08);
+    transform:translateX(8px);
+    box-shadow:inset 4px 0 var(--pink);
+}
+
+.title{
+    color:var(--gold);
+}
+
+.tag{
+    color:var(--muted);
+    font-size:.9rem;
+}
+
+.footer{
+    margin-top:2rem;
+    text-align:center;
+    color:var(--muted);
+    font-size:.85rem;
+}
+</style>
+</head>
+
+<body>
+<main class="index">
+    <h1>Game Index</h1>
+
+    <div class="subtitle">
+        Experiments, engines, toys, tools, and cursed little portals.
+    </div>
+
+    <nav class="shelf">
+        <a class="entry" href="./current/interactive_fiction/">
+            <span class="title">▸ Interactive Fiction Library</span>
+            <span class="tag">current</span>
+        </a>
+    </nav>
+
+    <div class="footer">
+        Insert coin. Choose directory. Open the weird door.
+    </div>
+</main>
+</body>
+</html>
