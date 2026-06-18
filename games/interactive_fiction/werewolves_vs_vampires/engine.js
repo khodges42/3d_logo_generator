@@ -56,7 +56,15 @@ async function loadStory() {
     throw new Error("YAML parser not found. Make sure js-yaml is loaded before engine.js.");
   }
 
-  return window.jsyaml.load(yamlText);
+  try {
+    return window.jsyaml.load(yamlText);
+  } catch (error) {
+    const mark = error.mark
+      ? `\nLine: ${error.mark.line + 1}, Column: ${error.mark.column + 1}`
+      : "";
+    const reason = error.reason ? `\nReason: ${error.reason}` : "";
+    throw new Error(`YAML parse error in ${STORY_FILE}.${mark}${reason}\n\n${error.message}`);
+  }
 }
 
 function createInitialState() {

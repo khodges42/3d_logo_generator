@@ -357,7 +357,7 @@ passages:
 
   silver_ending:
     type: ending
-    title: Ending: Silver Survives
+    title: "Ending: Silver Survives"
     text: |
       The silver charm burns white.
 
@@ -369,7 +369,7 @@ passages:
 
   blood_ending:
     type: ending
-    title: Ending: The Beautiful Hunger
+    title: "Ending: The Beautiful Hunger"
     text: |
       The blood token melts into the altar.
 
@@ -383,7 +383,7 @@ passages:
 
   secret_ending:
     type: ending
-    title: Secret Ending: The Altar Remembers
+    title: "Secret Ending: The Altar Remembers"
     text: |
       You speak the words from the note.
 
@@ -397,7 +397,7 @@ passages:
 
   hungry_ending:
     type: ending
-    title: Ending: Empty-Handed
+    title: "Ending: Empty-Handed"
     text: |
       You touch the altar.
 
