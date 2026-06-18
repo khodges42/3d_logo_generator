@@ -1,0 +1,406 @@
+title: Werewolves vs Vamps
+slug: werewolves-vs-vamps
+author: Kass
+version: 1
+
+description: A tiny gothic gamebook example for the static choice-based interactive fiction engine.
+
+ui:
+  show_stats: true
+  show_inventory: true
+  show_history: false
+
+debug:
+  validate: true
+  show_warnings: true
+
+start: character
+
+character:
+  fields:
+    name:
+      type: text
+      label: Name
+      default: Alex
+
+    pronouns:
+      type: choice
+      label: Pronouns
+      default: they/them
+      options:
+        - they/them
+        - she/her
+        - he/him
+
+stats:
+  grit: 0
+  charm: 0
+  occult: 0
+  suspicion: 0
+
+inventory:
+  - silver_charm
+  - chapel_key
+  - blood_token
+  - hunter_note
+
+flags:
+  met_hunter: false
+  trusted_vampire: false
+  opened_chapel: false
+  saw_wolf_mark: false
+
+passages:
+  character:
+    type: character
+    title: Before the Rain
+    text: |
+      Before the city chooses a side, tell us who walks into the storm.
+    goto: intro
+
+  intro:
+    type: story
+    title: Chapter One
+    text: |
+      The rain finds {{name}} outside the burned chapel on Mercer Street.
+
+      Three nights ago, someone painted a wolf's skull over the doors. Tonight, fresh roses hang from the chain.
+
+      The city says it is a gang thing.
+
+      The city is lying.
+    choices:
+      - text: Study the symbol on the chapel door.
+        goto: chapel_symbol
+        effects:
+          stats:
+            occult: 1
+            suspicion: 1
+
+      - text: Follow the wet footprints into the alley.
+        goto: alley
+        effects:
+          stats:
+            grit: 1
+
+      - text: Talk your way into the vampire bar across the street.
+        goto: velvet_room
+        effects:
+          stats:
+            charm: 1
+
+  chapel_symbol:
+    type: story
+    title: The Wolf Mark
+    text: |
+      The symbol is not graffiti. It is a warning.
+
+      Wolf-sign, old and ugly. The kind carved into trees before maps had names.
+
+      Beneath the roses, something silver catches your eye.
+    choices:
+      - text: Take the silver charm.
+        goto: chapel_door
+        effects:
+          add_items:
+            - silver_charm
+          flags:
+            saw_wolf_mark: true
+
+      - text: Leave it alone and try the chapel door.
+        goto: chapel_door
+        effects:
+          flags:
+            saw_wolf_mark: true
+
+  chapel_door:
+    type: story
+    title: The Chain
+    text: |
+      The chapel doors are chained shut.
+
+      The lock is modern. The scratches around it are not.
+    choices:
+      - text: Force the chain.
+        goto: chapel_inside
+        requires:
+          stat: grit
+          gte: 1
+        effects:
+          stats:
+            suspicion: 1
+          flags:
+            opened_chapel: true
+
+      - text: Use the chapel key.
+        goto: chapel_inside
+        requires:
+          item: chapel_key
+        effects:
+          flags:
+            opened_chapel: true
+
+      - text: Give up on the chapel and head for the alley.
+        goto: alley
+
+  alley:
+    type: story
+    title: The Alley
+    text: |
+      The alley smells like rain, engine oil, and wet fur.
+
+      A woman in a torn leather coat waits beneath a dead security light. Her eyes catch yours too quickly.
+
+      "You should not be here," she says.
+    choices:
+      - text: Ask her what happened at the chapel.
+        goto: hunter
+        effects:
+          stats:
+            charm: 1
+          flags:
+            met_hunter: true
+
+      - text: Tell her you are not leaving.
+        goto: hunter_respect
+        effects:
+          stats:
+            grit: 1
+          flags:
+            met_hunter: true
+
+      - text: Back away and cross to the vampire bar.
+        goto: velvet_room
+
+  hunter:
+    type: story
+    title: The Hunter
+    text: |
+      She studies you for a long second.
+
+      "Vampires put the roses there. Wolves put the mark there. Both sides want the chapel, and neither side remembers why."
+
+      She presses a folded note into your palm.
+    choices:
+      - text: Read the hunter's note.
+        goto: note
+        effects:
+          add_items:
+            - hunter_note
+
+      - text: Ask if she has a way into the chapel.
+        goto: key_offer
+        requires:
+          stat: charm
+          gte: 2
+
+  hunter_respect:
+    type: story
+    title: Teeth in the Rain
+    text: |
+      The hunter almost smiles.
+
+      "Stupid," she says. "But not useless."
+
+      She tosses you a small brass key.
+    choices:
+      - text: Catch the key and return to the chapel.
+        goto: chapel_door
+        effects:
+          add_items:
+            - chapel_key
+
+      - text: Ask what she is hunting.
+        goto: hunter
+
+  key_offer:
+    type: story
+    title: A Useful Lie
+    text: |
+      "Maybe," the hunter says.
+
+      She hands you a brass key, but keeps her fingers on it for a moment.
+
+      "If you open that door, do not trust anything beautiful."
+    choices:
+      - text: Take the key and return to the chapel.
+        goto: chapel_door
+        effects:
+          add_items:
+            - chapel_key
+
+  note:
+    type: story
+    title: The Note
+    text: |
+      The note contains three words:
+
+      **THE ALTAR REMEMBERS**
+
+      Underneath, in smaller writing:
+
+      **Blood opens what silver survives.**
+    choices:
+      - text: Go to the chapel.
+        goto: chapel_door
+
+      - text: Go to the vampire bar.
+        goto: velvet_room
+        effects:
+          stats:
+            occult: 1
+
+  velvet_room:
+    type: story
+    title: The Velvet Room
+    text: |
+      The vampire bar is quiet in the theatrical way expensive places are quiet.
+
+      A pale bartender looks at you like he has already read the ending.
+
+      "Lost?"
+    choices:
+      - text: Lie beautifully.
+        goto: vampire_help
+        requires:
+          stat: charm
+          gte: 1
+        effects:
+          stats:
+            charm: 1
+          flags:
+            trusted_vampire: true
+
+      - text: Ask directly about the chapel.
+        goto: vampire_warning
+        effects:
+          stats:
+            suspicion: 1
+
+      - text: Leave before your nerves show.
+        goto: alley
+
+  vampire_help:
+    type: story
+    title: A Beautiful Lie
+    text: |
+      The bartender laughs.
+
+      "That was awful," he says. "But brave."
+
+      He slides a red coin across the bar. It is warm.
+
+      "If the altar wakes up, give it this before it asks for more."
+    choices:
+      - text: Take the blood token and go to the chapel.
+        goto: chapel_door
+        effects:
+          add_items:
+            - blood_token
+
+  vampire_warning:
+    type: story
+    title: The Warning
+    text: |
+      The bartender stops smiling.
+
+      "The chapel is older than both of us. Older than wolves. Older than hunger."
+
+      He looks toward the rain-streaked windows.
+
+      "If you go in empty-handed, it will fill you with something."
+    choices:
+      - text: Return to the chapel anyway.
+        goto: chapel_door
+        effects:
+          stats:
+            grit: 1
+
+      - text: Try to earn his trust.
+        goto: vampire_help
+        requires:
+          stat: charm
+          gte: 1
+
+  chapel_inside:
+    type: story
+    title: The Altar
+    text: |
+      Inside, the chapel is dry.
+
+      That is the first impossible thing.
+
+      The second is the altar, split down the middle, breathing softly in the dark.
+
+      Something below the stone says your name.
+    choices:
+      - text: Place the silver charm on the altar.
+        goto: silver_ending
+        requires:
+          item: silver_charm
+
+      - text: Offer the blood token.
+        goto: blood_ending
+        requires:
+          item: blood_token
+
+      - text: Speak the words from the hunter's note.
+        goto: secret_ending
+        requires:
+          all:
+            - item: hunter_note
+            - stat: occult
+              gte: 2
+
+      - text: Touch the altar with your bare hand.
+        goto: hungry_ending
+
+  silver_ending:
+    type: ending
+    title: Ending: Silver Survives
+    text: |
+      The silver charm burns white.
+
+      Beneath the chapel, something ancient recoils, not defeated but denied.
+
+      By morning, the roses have blackened. The wolf mark is gone.
+
+      For now, the city gets to pretend it is ordinary.
+
+  blood_ending:
+    type: ending
+    title: Ending: The Beautiful Hunger
+    text: |
+      The blood token melts into the altar.
+
+      The chapel exhales.
+
+      Somewhere across the street, every vampire in the Velvet Room kneels at once.
+
+      You have not saved the city.
+
+      You have chosen its next monarch.
+
+  secret_ending:
+    type: ending
+    title: Secret Ending: The Altar Remembers
+    text: |
+      You speak the words from the note.
+
+      The altar cracks open like an eye.
+
+      It does not want blood. It does not want silver. It wants a witness.
+
+      By dawn, you remember the first city, the first wolf, the first beautiful corpse that refused to stay dead.
+
+      You walk home in the rain carrying a history no one else survived.
+
+  hungry_ending:
+    type: ending
+    title: Ending: Empty-Handed
+    text: |
+      You touch the altar.
+
+      The chapel fills you with teeth.
+
+      Outside, the rain keeps falling.
