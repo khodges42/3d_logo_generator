@@ -1,6 +1,6 @@
-/* Static choice-based interactive fiction engine v1.
+/* ChoiceBook v0.2
+   Static choice-based interactive fiction engine.
    Folder philosophy: one directory = one game.
-   Required files: index.html, style.css, engine.js, story.yaml.
 */
 
 const STORY_FILE = "./story.yaml";
@@ -14,18 +14,8 @@ let story = null;
 let state = null;
 let validation = null;
 
-function storageKey() {
-  const slug = story?.slug || slugify(story?.title || location.pathname);
-  return `choice-if:${slug}:save`;
-}
-
-function slugify(value) {
-  return String(value)
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
+initTheme();
+main();
 
 async function main() {
   try {
@@ -44,6 +34,44 @@ async function main() {
   }
 }
 
+function initTheme() {
+  const saved = localStorage.getItem("choicebook:theme");
+  const preferredDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const theme = saved || (preferredDark ? "dark" : "light");
+  document.body.dataset.theme = theme;
+}
+
+function toggleTheme() {
+  const current = document.body.dataset.theme === "dark" ? "dark" : "light";
+  const next = current === "dark" ? "light" : "dark";
+  document.body.dataset.theme = next;
+  localStorage.setItem("choicebook:theme", next);
+  render();
+}
+
+function themeButtonHtml() {
+  const isDark = document.body.dataset.theme === "dark";
+  return `<button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle color theme">${isDark ? "☀ Light" : "☾ Dark"}</button>`;
+}
+
+function bindThemeButton() {
+  const button = document.getElementById("theme-toggle");
+  if (button) button.addEventListener("click", toggleTheme);
+}
+
+function storageKey() {
+  const slug = story?.slug || slugify(story?.title || location.pathname);
+  return `choicebook:${slug}:save`;
+}
+
+function slugify(value) {
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 async function loadStory() {
   const response = await fetch(STORY_FILE, { cache: "no-store" });
   if (!response.ok) {
@@ -60,10 +88,10 @@ async function loadStory() {
     return window.jsyaml.load(yamlText);
   } catch (error) {
     const mark = error.mark
-      ? `\nLine: ${error.mark.line + 1}, Column: ${error.mark.column + 1}`
+      ? `\n\nYAML location: line ${error.mark.line + 1}, column ${error.mark.column + 1}`
       : "";
-    const reason = error.reason ? `\nReason: ${error.reason}` : "";
-    throw new Error(`YAML parse error in ${STORY_FILE}.${mark}${reason}\n\n${error.message}`);
+    const snippet = error.mark?.snippet ? `\n\n${error.mark.snippet}` : "";
+    throw new Error(`Could not parse story.yaml.\n\n${error.reason || error.message}${mark}${snippet}`);
   }
 }
 
@@ -85,7 +113,6 @@ function loadSave() {
 
     const parsed = JSON.parse(raw);
 
-    // Keep saves forward-compatible with newly added stats/flags.
     parsed.stats = { ...(story.stats || {}), ...(parsed.stats || {}) };
     parsed.flags = { ...(story.flags || {}), ...(parsed.flags || {}) };
     parsed.inventory = Array.isArray(parsed.inventory) ? parsed.inventory : [];
@@ -130,6 +157,7 @@ function render() {
 function renderHeader() {
   const author = story.author ? ` by ${escapeHtml(story.author)}` : "";
   return `
+    ${themeButtonHtml()}
     <h1 class="book-title">${escapeHtml(story.title || "Untitled Story")}</h1>
     <p class="book-meta">${escapeHtml(story.description || "")}${author}</p>
   `;
@@ -199,6 +227,8 @@ function renderCharacter(passage) {
     ${renderToolbar(false)}
   `;
 
+  bindThemeButton();
+
   document.getElementById("character-form").addEventListener("submit", event => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -233,6 +263,8 @@ function renderPassage(passage) {
     ${renderStatus()}
     ${renderToolbar(true)}
   `;
+
+  bindThemeButton();
 
   document.querySelectorAll("[data-choice]").forEach(button => {
     button.addEventListener("click", () => {
@@ -416,7 +448,6 @@ function getValue(path) {
   return parts.slice(1).reduce((value, key) => value?.[key], root);
 }
 
-// Tiny markdown-ish renderer for v1. Deliberately small, not full Markdown.
 function markdownish(text) {
   const escaped = escapeHtml(text);
 
@@ -611,21 +642,25 @@ function renderFatalValidation() {
   ].join("\n");
 
   app.innerHTML = `
+    ${themeButtonHtml()}
     ${renderHeader()}
     <section class="error-screen">
       <h2>Validation Error</h2>
       <pre class="validator">${escapeHtml(report)}</pre>
     </section>
   `;
+  bindThemeButton();
 }
 
 function renderFatalError(error) {
   app.innerHTML = `
+    ${themeButtonHtml()}
     <section class="error-screen">
       <h1>Something broke</h1>
       <pre class="validator">${escapeHtml(error.stack || error.message || String(error))}</pre>
     </section>
   `;
+  bindThemeButton();
 }
 
 function labelize(key) {
@@ -642,5 +677,3 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
-
-main();

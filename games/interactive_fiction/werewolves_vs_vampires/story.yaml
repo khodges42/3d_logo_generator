@@ -1,9 +1,9 @@
-title: Werewolves vs Vamps
-slug: werewolves-vs-vamps
-author: Kass
-version: 1
+title: "Werewolves vs Vamps"
+slug: "werewolves-vs-vamps"
+author: "Kass"
+version: 2
 
-description: A tiny gothic gamebook example for the static choice-based interactive fiction engine.
+description: "A tiny gothic gamebook example for ChoiceBook."
 
 ui:
   show_stats: true
@@ -37,40 +37,47 @@ stats:
   charm: 0
   occult: 0
   suspicion: 0
+  vampire_trust: 0
+  wolf_trust: 0
 
 inventory:
   - silver_charm
   - chapel_key
-  - blood_token
+  - crimson_denarius
   - hunter_note
+  - wolf_mark_rubbing
 
 flags:
   met_hunter: false
   trusted_vampire: false
   opened_chapel: false
   saw_wolf_mark: false
+  learned_vampire_secret: false
+  learned_wolf_secret: false
 
 passages:
   character:
     type: character
-    title: Before the Rain
+    title: "Before the Rain"
     text: |
       Before the city chooses a side, tell us who walks into the storm.
     goto: intro
 
   intro:
     type: story
-    title: Chapter One
+    title: "Mercer Street, 11:42 PM"
     text: |
       The rain finds {{name}} outside the burned chapel on Mercer Street.
 
-      Three nights ago, someone painted a wolf's skull over the doors. Tonight, fresh roses hang from the chain.
+      Three nights ago, someone painted a wolf skull over the doors. Tonight, fresh roses hang from the chain. They are too red, too expensive, and too carefully arranged for anyone pretending this is random vandalism.
+
+      Across the street, a basement club hums under a black awning. Down the alley, something heavy drags one foot through the puddles.
 
       The city says it is a gang thing.
 
-      The city is lying.
+      The city is doing that thing where it lies very badly and hopes you are tired.
     choices:
-      - text: Study the symbol on the chapel door.
+      - text: Study the wolf mark on the chapel door.
         goto: chapel_symbol
         effects:
           stats:
@@ -83,7 +90,7 @@ passages:
           stats:
             grit: 1
 
-      - text: Talk your way into the vampire bar across the street.
+      - text: Cross the street to the basement goth club.
         goto: velvet_room
         effects:
           stats:
@@ -91,11 +98,11 @@ passages:
 
   chapel_symbol:
     type: story
-    title: The Wolf Mark
+    title: "The Wolf Mark"
     text: |
-      The symbol is not graffiti. It is a warning.
+      The mark is not graffiti. It is too deliberate for that.
 
-      Wolf-sign, old and ugly. The kind carved into trees before maps had names.
+      A wolf skull, seven teeth, a broken circle around the jaw. The paint is mixed with brick dust and something darker. The old stories would call this a warning. The practical part of your brain calls it evidence and immediately regrets participating.
 
       Beneath the roses, something silver catches your eye.
     choices:
@@ -106,6 +113,18 @@ passages:
             - silver_charm
           flags:
             saw_wolf_mark: true
+          stats:
+            occult: 1
+
+      - text: Make a rubbing of the wolf mark.
+        goto: chapel_door
+        effects:
+          add_items:
+            - wolf_mark_rubbing
+          flags:
+            saw_wolf_mark: true
+          stats:
+            suspicion: 1
 
       - text: Leave it alone and try the chapel door.
         goto: chapel_door
@@ -115,11 +134,13 @@ passages:
 
   chapel_door:
     type: story
-    title: The Chain
+    title: "The Chain"
     text: |
       The chapel doors are chained shut.
 
-      The lock is modern. The scratches around it are not.
+      The lock is modern. The scratches around it are not. Someone has tried bolt cutters, a pry bar, and at least once, judging by the scorch marks, a very bad idea involving fire.
+
+      The building feels occupied in the way a closed mouth feels occupied.
     choices:
       - text: Force the chain.
         goto: chapel_inside
@@ -140,69 +161,99 @@ passages:
           flags:
             opened_chapel: true
 
-      - text: Give up on the chapel and head for the alley.
+      - text: Return to the alley.
         goto: alley
+
+      - text: Go to the basement club.
+        goto: velvet_room
 
   alley:
     type: story
-    title: The Alley
+    title: "The Alley"
     text: |
       The alley smells like rain, engine oil, and wet fur.
 
-      A woman in a torn leather coat waits beneath a dead security light. Her eyes catch yours too quickly.
+      A woman in a torn leather coat waits beneath a dead security light. Her boots are muddy. Her hands are clean. That combination feels like a threat.
 
-      "You should not be here," she says.
+      She looks past you to the chapel.
+
+      "You should not be here," she says. "That is not advice. It is me being polite before things get educational."
     choices:
-      - text: Ask her what happened at the chapel.
+      - text: Ask what happened at the chapel.
         goto: hunter
         effects:
           stats:
             charm: 1
           flags:
             met_hunter: true
+          stats:
+            wolf_trust: 1
 
       - text: Tell her you are not leaving.
         goto: hunter_respect
         effects:
           stats:
             grit: 1
+            wolf_trust: 1
           flags:
             met_hunter: true
 
-      - text: Back away and cross to the vampire bar.
+      - text: Show her the rubbing of the wolf mark.
+        goto: wolf_explains_mark
+        requires:
+          item: wolf_mark_rubbing
+        effects:
+          stats:
+            wolf_trust: 2
+          flags:
+            met_hunter: true
+
+      - text: Back away and cross to the basement club.
         goto: velvet_room
 
   hunter:
     type: story
-    title: The Hunter
+    title: "The Hunter"
     text: |
       She studies you for a long second.
 
-      "Vampires put the roses there. Wolves put the mark there. Both sides want the chapel, and neither side remembers why."
+      "Vampires put the roses there. Wolves put the mark there. Both sides want the chapel locked. Both sides are also pretending the other side is the problem."
 
-      She presses a folded note into your palm.
+      She takes a folded note from inside her jacket.
+
+      "The thing under the altar is older than the feud. The vampires feed it a little blood every few years to keep it asleep. We think that is insane. They think killing it is impossible. Everyone is very committed to being right."
     choices:
-      - text: Read the hunter's note.
+      - text: Take the hunter's note.
         goto: note
         effects:
           add_items:
             - hunter_note
+          flags:
+            learned_wolf_secret: true
 
       - text: Ask if she has a way into the chapel.
         goto: key_offer
         requires:
-          stat: charm
-          gte: 2
+          stat: wolf_trust
+          gte: 1
+
+      - text: Tell her the vampires may know more than she thinks.
+        goto: wolf_skeptic
+        effects:
+          stats:
+            suspicion: 1
 
   hunter_respect:
     type: story
-    title: Teeth in the Rain
+    title: "Teeth in the Rain"
     text: |
       The hunter almost smiles.
 
-      "Stupid," she says. "But not useless."
+      "Stupid," she says. "But not decorative. That puts you ahead of most people who walk into this."
 
       She tosses you a small brass key.
+
+      "If you open the chapel, do not touch the altar bare-handed. If the vampires gave you anything Roman, do not trust it completely. If the altar speaks in your voice, stop listening."
     choices:
       - text: Catch the key and return to the chapel.
         goto: chapel_door
@@ -213,15 +264,62 @@ passages:
       - text: Ask what she is hunting.
         goto: hunter
 
+  wolf_explains_mark:
+    type: story
+    title: "A Family Signature"
+    text: |
+      She looks at the rubbing, then at you.
+
+      "That mark means the pack has claimed responsibility. Not ownership. Responsibility."
+
+      Her voice hardens on the last word.
+
+      "The chapel is a cork in a bottle. Vampires keep topping the bottle off. We want it empty. Preferably before the cork rots."
+    choices:
+      - text: Ask for help getting inside.
+        goto: key_offer
+        effects:
+          flags:
+            learned_wolf_secret: true
+
+      - text: Ask what happens if the cork rots.
+        goto: note
+        effects:
+          add_items:
+            - hunter_note
+          flags:
+            learned_wolf_secret: true
+
+  wolf_skeptic:
+    type: story
+    title: "Old Arguments"
+    text: |
+      "They always know more than they say," she says. "That is what makes them vampires."
+
+      A siren moves somewhere beyond the rain.
+
+      "But knowing a thing and surviving it are not the same."
+    choices:
+      - text: Take the note and decide for yourself.
+        goto: note
+        effects:
+          add_items:
+            - hunter_note
+
+      - text: Go ask the vampires directly.
+        goto: velvet_room
+
   key_offer:
     type: story
-    title: A Useful Lie
+    title: "A Useful Key"
     text: |
       "Maybe," the hunter says.
 
       She hands you a brass key, but keeps her fingers on it for a moment.
 
-      "If you open that door, do not trust anything beautiful."
+      "You are not special because you are involved. That is how this thing gets people. It makes the first bad decision feel like destiny."
+
+      Then she lets go.
     choices:
       - text: Take the key and return to the chapel.
         goto: chapel_door
@@ -231,20 +329,24 @@ passages:
 
   note:
     type: story
-    title: The Note
+    title: "The Note"
     text: |
-      The note contains three words:
+      The note contains three lines:
 
       **THE ALTAR REMEMBERS**
 
+      **BLOOD FEEDS THE LOCK**
+
+      **SILVER WOUNDS THE DREAM**
+
       Underneath, in smaller writing:
 
-      **Blood opens what silver survives.**
+      **If it knows your name, do not answer.**
     choices:
       - text: Go to the chapel.
         goto: chapel_door
 
-      - text: Go to the vampire bar.
+      - text: Go to the basement club.
         goto: velvet_room
         effects:
           stats:
@@ -252,97 +354,355 @@ passages:
 
   velvet_room:
     type: story
-    title: The Velvet Room
+    title: "The Velvet Room"
     text: |
-      The vampire bar is quiet in the theatrical way expensive places are quiet.
+      The club is called the Velvet Room, because subtlety died in 1998 and nobody here attended the funeral.
 
-      A pale bartender looks at you like he has already read the ending.
+      Crüxshadows plays over old speakers with complete sincerity or perfect irony. It is impossible to tell which would be worse.
 
-      "Lost?"
+      Three bored, beautiful goths occupy a crescent booth near the back. They are dressed like they came here to be photographed for a magazine that stopped publishing before you were born. All three are pretending not to watch you.
+
+      They are bad at pretending.
+
+      Behind the bar, a pale man polishes a glass that was already clean when you walked in.
     choices:
-      - text: Lie beautifully.
-        goto: vampire_help
-        requires:
-          stat: charm
-          gte: 1
+      - text: Say, "Nice place."
+        goto: bartender_nice
         effects:
           stats:
-            charm: 1
-          flags:
-            trusted_vampire: true
+            vampire_trust: 1
 
-      - text: Ask directly about the chapel.
-        goto: vampire_warning
+      - text: Say, "I heard vampires had better music."
+        goto: bartender_music
+        effects:
+          stats:
+            vampire_trust: 2
+            charm: 1
+
+      - text: Say, "I seek the children of the night."
+        goto: bartender_cringe
+        effects:
+          stats:
+            vampire_trust: -1
+            suspicion: 1
+
+      - text: Admit you are completely lost.
+        goto: bartender_honest
+        effects:
+          stats:
+            vampire_trust: 1
+            grit: 1
+
+  bartender_nice:
+    type: story
+    title: "Nice Place"
+    text: |
+      "No," the bartender says.
+
+      You wait for him to elaborate.
+
+      He does not.
+
+      One of the goths in the booth covers a smile with the back of her hand.
+    choices:
+      - text: Recover with, "Okay, terrible place. Great lighting."
+        goto: bartender_lighting
+        effects:
+          stats:
+            vampire_trust: 1
+
+      - text: Ask about the chapel before this gets worse.
+        goto: bartender_chapel
         effects:
           stats:
             suspicion: 1
 
-      - text: Leave before your nerves show.
+  bartender_music:
+    type: story
+    title: "Better Music"
+    text: |
+      The bartender looks up at the speakers.
+
+      "Every generation thinks it invented being dramatic," he says.
+
+      The tallest goth in the booth raises her glass in silent agreement. You notice no one at the table has taken a drink.
+    choices:
+      - text: Ask if anyone here actually drinks.
+        goto: bartender_drinks
+        effects:
+          stats:
+            vampire_trust: 1
+            suspicion: 1
+
+      - text: Ask about the chapel.
+        goto: bartender_chapel
+
+  bartender_cringe:
+    type: story
+    title: "Children of the Night"
+    text: |
+      The bartender closes his eyes.
+
+      Not dramatically. Tiredly.
+
+      "Please do not do that."
+
+      From the booth, one of the goths whispers, "No, let them continue."
+
+      The bartender points at her without looking. "Absolutely not."
+    choices:
+      - text: Apologize and ask about the chapel like a normal person.
+        goto: bartender_chapel
+        effects:
+          stats:
+            vampire_trust: 1
+
+      - text: Double down. "I am comfortable in darkness."
+        goto: bartender_pity
+        effects:
+          stats:
+            vampire_trust: -1
+            suspicion: 1
+
+  bartender_honest:
+    type: story
+    title: "Completely Lost"
+    text: |
+      "That," the bartender says, "is the first plausible thing anyone has said to me tonight."
+
+      He sets the glass down.
+
+      "You saw the chapel. You saw the roses. You saw the wolf mark. Now you are here because all the normal doors in your life have temporarily stopped working."
+    choices:
+      - text: Ask who is trapped in the chapel.
+        goto: bartender_elder
+        effects:
+          stats:
+            vampire_trust: 1
+
+      - text: Ask why nobody warned you away.
+        goto: bartender_pity
+
+  bartender_lighting:
+    type: story
+    title: "Great Lighting"
+    text: |
+      The bartender considers this.
+
+      "Acceptable recovery."
+
+      The goths in the booth go back to pretending not to listen, which somehow involves listening harder.
+    choices:
+      - text: Ask about the roses on the chapel door.
+        goto: bartender_chapel
+        effects:
+          stats:
+            vampire_trust: 1
+
+  bartender_drinks:
+    type: story
+    title: "Nobody Drinks"
+    text: |
+      The bartender glances at the booth.
+
+      "They order because they miss having habits."
+
+      One of the goths lifts a glass full of something dark and untouched.
+
+      "Speak for yourself," she says.
+
+      "You have been nursing that since Tuesday."
+
+      "It has notes."
+    choices:
+      - text: Ask why they are all watching you.
+        goto: bartender_pity
+        effects:
+          stats:
+            vampire_trust: 1
+
+      - text: Ask about the chapel.
+        goto: bartender_chapel
+
+  bartender_chapel:
+    type: story
+    title: "The Chapel"
+    text: |
+      The bartender stops polishing the glass.
+
+      For the first time, the room feels less like a club and more like a room full of people who have survived the same accident.
+
+      "The chapel is not ours," he says. "It is not theirs either. It is a lock."
+
+      He looks toward the stairwell behind the bar.
+
+      "One of our elders is sealed beneath it. Not imprisoned by wolves. Not exactly. She keeps the thing under the altar asleep. We feed the lock because starving it has consequences."
+    choices:
+      - text: Ask what the werewolves want.
+        goto: bartender_wolves
+        effects:
+          flags:
+            learned_vampire_secret: true
+
+      - text: Ask what happens if the elder wakes up.
+        goto: bartender_elder
+        effects:
+          stats:
+            occult: 1
+          flags:
+            learned_vampire_secret: true
+
+      - text: Ask if there is anything that can help you survive the chapel.
+        goto: denarius_check
+
+  bartender_wolves:
+    type: story
+    title: "The Wolves"
+    text: |
+      "They want to end the arrangement," he says. "They call it mercy. They may even mean it."
+
+      He leans closer.
+
+      "But a wolf's solution to a locked door is usually to break the door. Sometimes the door is load-bearing."
+    choices:
+      - text: Ask for something useful, not metaphorical.
+        goto: denarius_check
+        effects:
+          stats:
+            vampire_trust: 1
+
+      - text: Leave for the alley and hear the wolves' side.
         goto: alley
 
-  vampire_help:
+  bartender_elder:
     type: story
-    title: A Beautiful Lie
+    title: "The Elder"
     text: |
-      The bartender laughs.
+      "Her name is Mara," he says.
 
-      "That was awful," he says. "But brave."
+      The three goths in the booth stop pretending. For one clean second, all their attention lands on him.
 
-      He slides a red coin across the bar. It is warm.
-
-      "If the altar wakes up, give it this before it asks for more."
+      "She went under the chapel before this city had streetlights. She was not noble. Do not make that mistake. But she volunteered, and everyone who jokes about vampires being selfish owes their continued existence to her bad temper."
     choices:
-      - text: Take the blood token and go to the chapel.
+      - text: Ask for the truth about the coin.
+        goto: denarius_check
+        effects:
+          stats:
+            vampire_trust: 1
+          flags:
+            learned_vampire_secret: true
+
+      - text: Return to the chapel.
+        goto: chapel_door
+
+  denarius_check:
+    type: story
+    title: "The Denarius"
+    text: |
+      The bartender reaches under the bar and brings out a coin.
+
+      It is a Roman denarius, worn smooth in places where a thumb has worried it for centuries. The silver is stained crimson along the emperor's throat.
+
+      When he sets it on the bar, it sticks to his finger for half a second too long.
+
+      "If the altar asks for blood, give it this first."
+    choices:
+      - text: Take it with steady hands.
+        goto: denarius_respect
+        requires:
+          stat: vampire_trust
+          gte: 3
+        effects:
+          add_items:
+            - crimson_denarius
+          flags:
+            trusted_vampire: true
+
+      - text: Ask if this makes you part of some ancient covenant.
+        goto: denarius_cringe
+        effects:
+          stats:
+            suspicion: 1
+
+      - text: Take it and admit you have no idea what you are doing.
+        goto: denarius_pity
+        effects:
+          add_items:
+            - crimson_denarius
+
+  denarius_respect:
+    type: story
+    title: "Borrowed Blood"
+    text: |
+      "Good," he says. "You understand enough to be frightened."
+
+      The coin is cold at first. Then sticky. Then merely heavy.
+
+      Behind you, one of the goths says, "Try not to die. It ruins the mood."
+
+      The bartender sighs. "That is the closest thing you will get to a blessing here."
+    choices:
+      - text: Return to the chapel.
+        goto: chapel_door
+
+  denarius_cringe:
+    type: story
+    title: "Ancient Covenant"
+    text: |
+      The bartender stares at you.
+
+      "No."
+
+      A pause.
+
+      "It makes you a person holding a coin."
+
+      Another pause.
+
+      "Please survive long enough to become less embarrassing."
+
+      He pushes the denarius across the bar anyway.
+    choices:
+      - text: Take the coin and leave before you say anything else.
         goto: chapel_door
         effects:
           add_items:
-            - blood_token
+            - crimson_denarius
 
-  vampire_warning:
+  denarius_pity:
     type: story
-    title: The Warning
+    title: "Pity Has Weight"
     text: |
-      The bartender stops smiling.
+      "Yes," he says. "That has been clear for some time."
 
-      "The chapel is older than both of us. Older than wolves. Older than hunger."
+      He pushes the denarius toward you anyway.
 
-      He looks toward the rain-streaked windows.
-
-      "If you go in empty-handed, it will fill you with something."
+      "Do not mistake this for trust. This is emergency equipment."
     choices:
-      - text: Return to the chapel anyway.
+      - text: Take the coin and return to the chapel.
         goto: chapel_door
-        effects:
-          stats:
-            grit: 1
-
-      - text: Try to earn his trust.
-        goto: vampire_help
-        requires:
-          stat: charm
-          gte: 1
 
   chapel_inside:
     type: story
-    title: The Altar
+    title: "Inside the Chapel"
     text: |
       Inside, the chapel is dry.
 
       That is the first impossible thing.
 
-      The second is the altar, split down the middle, breathing softly in the dark.
+      The pews are stacked against the walls. The floor has been scrubbed so many times the stone has gone pale. Around the altar, someone has carved the same warning in Latin, English, and something older than either.
 
-      Something below the stone says your name.
+      From below the floor, a woman laughs once. It sounds exhausted.
     choices:
-      - text: Place the silver charm on the altar.
+      - text: Approach the altar with the silver charm.
         goto: silver_ending
         requires:
           item: silver_charm
 
-      - text: Offer the blood token.
+      - text: Place the crimson denarius on the altar.
         goto: blood_ending
         requires:
-          item: blood_token
+          item: crimson_denarius
 
       - text: Speak the words from the hunter's note.
         goto: secret_ending
@@ -361,25 +721,31 @@ passages:
     text: |
       The silver charm burns white.
 
-      Beneath the chapel, something ancient recoils, not defeated but denied.
+      Beneath the chapel, something strikes the stone hard enough to crack the altar from end to end.
 
-      By morning, the roses have blackened. The wolf mark is gone.
+      The laughter stops.
 
-      For now, the city gets to pretend it is ordinary.
+      By morning, the roses have blackened. The wolf mark is gone. The Velvet Room is locked from the inside.
+
+      You do not know whether you saved anyone.
+
+      You know something old learned to fear pain again.
 
   blood_ending:
     type: ending
-    title: "Ending: The Beautiful Hunger"
+    title: "Ending: Borrowed Blood"
     text: |
-      The blood token melts into the altar.
+      The denarius sticks to the altar.
 
-      The chapel exhales.
+      Crimson spreads across the stone in thin Roman lines, following channels cut before the city had a name.
 
-      Somewhere across the street, every vampire in the Velvet Room kneels at once.
+      The woman beneath the floor inhales.
 
-      You have not saved the city.
+      When you step outside, the three goths from the club are waiting across the street. One of them gives you a small, formal nod.
 
-      You have chosen its next monarch.
+      The chapel remains locked.
+
+      For now, that is enough.
 
   secret_ending:
     type: ending
@@ -387,13 +753,15 @@ passages:
     text: |
       You speak the words from the note.
 
-      The altar cracks open like an eye.
+      The altar opens—not like a door, but like a mouth deciding not to bite.
 
-      It does not want blood. It does not want silver. It wants a witness.
+      Beneath it, Mara looks up at you through a lattice of silver and old bone. She is beautiful in the way a sword is beautiful. Useful. Dangerous. Made for a specific kind of ending.
 
-      By dawn, you remember the first city, the first wolf, the first beautiful corpse that refused to stay dead.
+      "Finally," she says. "Someone who can read."
 
-      You walk home in the rain carrying a history no one else survived.
+      By dawn, the wolves and vampires are both furious with you.
+
+      This may be the first good sign.
 
   hungry_ending:
     type: ending
@@ -401,6 +769,18 @@ passages:
     text: |
       You touch the altar.
 
-      The chapel fills you with teeth.
+      Nothing happens.
 
-      Outside, the rain keeps falling.
+      That is the part you keep remembering later.
+
+      You go home. You wash your hands. You brush your teeth.
+
+      The sink fills with blood.
+
+      Not yours.
+
+      When you look in the mirror, one canine is longer than it was yesterday.
+
+      Just one.
+
+      Tomorrow there will probably be two.
