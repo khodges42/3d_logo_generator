@@ -523,6 +523,46 @@ passages:
       - text: Ask about the chapel.
         goto: bartender_chapel
 
+  bartender_pity:
+    type: story
+    title: "Pity From the Undead"
+    text: |
+      The bartender looks at you for a long moment.
+
+      Then he looks at the three goths in the booth.
+
+      "They're going to go to the chapel," he says.
+
+      The tallest one says, "Obviously."
+
+      "They're going to touch something."
+
+      "Almost certainly."
+
+      "They're going to ask the altar if it has feelings."
+
+      "That feels unfair," one of the others says. "But not inaccurate."
+
+      The bartender reaches under the bar and produces a Roman denarius, worn smooth in places where a thumb has worried it for centuries. The silver is stained crimson along the emperor's throat.
+
+      When he sets it down, it sticks to his finger for half a second too long.
+
+      "Take this," he says. "This is not trust. This is harm reduction."
+    choices:
+      - text: Take the sticky crimson denarius.
+        goto: chapel_door
+        effects:
+          add_items:
+            - crimson_denarius
+          stats:
+            suspicion: 1
+
+      - text: Ask why he is helping you.
+        goto: bartender_chapel
+        effects:
+          stats:
+            vampire_trust: 1
+
   bartender_chapel:
     type: story
     title: "The Chapel"
